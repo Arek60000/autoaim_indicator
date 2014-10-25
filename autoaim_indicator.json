@@ -1,0 +1,15 @@
+{
+    "autoaim_indicator_panel": {
+        "x": 1280,
+        "y": 350,
+        "width": 50,
+        "height": 24,
+        "hcentered": false,
+        "vcentered": false,
+        "background": "autoaim_indicator.dds",
+        "font": "default_medium.font",
+        "visible": false,
+	"text": "AUTO",
+	"color": "#FFFF00"
+    }
+}
