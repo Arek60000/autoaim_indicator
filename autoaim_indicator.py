@@ -39,7 +39,6 @@ def __pe_onArenaPeriodChange(period = ARENA_PERIOD.BATTLE, *args):
             BigWorld.callback(1, __pe_onArenaPeriodChange)
             return
         indicator = TextLabel(config.get('autoaim_indicator_panel', {}))
-        indicator.setText("AUTO", "FFFF00")
         onChangeScreenResolution()
         new_autoAim(None, True)
         MYLOG('indicator prepared')
@@ -56,7 +55,7 @@ def new_autoAim(target, init = False):
     if not init:
         old_autoAim(target)
     autoAimVehicle = BigWorld.player().autoAimVehicle
-    MYLOGLIVE("autoAimVehicle = %s" % (not autoAimVehicle is None))
+    #MYLOGLIVE("autoAimVehicle = %s" % (not autoAimVehicle is None))
     indicator.setVisible(not autoAimVehicle is None)
 
 def new_onAutoAimVehicleLost():
@@ -68,7 +67,6 @@ class TextLabel(object):
     label = None
     shadow = None
     window = None
-    text = ''
     color = '\cFFFFFFFF;'
     visible = True
     x = 0
@@ -78,7 +76,6 @@ class TextLabel(object):
     mainCaliberValue = 0
 
     def __init__(self, config):
-        self.text = config.get('text', '')
         if config.get('color', False):
             self.color = '\c' + config.get('color')[1:] + 'FF;'
         self.visible = config.get('visible', True)
@@ -104,6 +101,7 @@ class TextLabel(object):
         self.installItem(self.shadow, font)
         self.label = GUI.Text('')
         self.installItem(self.label, font)
+        self.setText(config.get('text', ''))
         self.setVisible(self.visible)
 
     def installItem(self, item, font):
