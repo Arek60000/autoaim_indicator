@@ -17,6 +17,8 @@ config = None
 old_autoAim = None
 old_onAutoAimVehicleLost = None
 indicator = None
+playerVehicleID = None
+myEventsAttached = False
 
 def MYLOGLIVE(message):
     from messenger import MessengerEntry
@@ -26,41 +28,105 @@ def MYLOGLIVE(message):
 def MYLOG(message, *args):
     LOG_NOTE(message, *args)
 
-def __pe_onArenaPeriodChange(period = ARENA_PERIOD.BATTLE, *args):
+def myPe_onArenaPeriodChange(period = ARENA_PERIOD.BATTLE, *args):
     global config
     global old_autoAim
     global old_onAutoAimVehicleLost
     global indicator
-    player = BigWorld.player()
+    global playerVehicleID
+    global myEventsAttached
     if period is ARENA_PERIOD.BATTLE:
         #MYLOG('in a battle')
         if g_windowsManager.battleWindow is None:
             #MYLOG('no battleWindow yet, retrying in a sec')
-            BigWorld.callback(1, __pe_onArenaPeriodChange)
+            BigWorld.callback(1, myPe_onArenaPeriodChange)
             return
-        indicator = TextLabel(config.get('autoaim_indicator_panel', {}))
-        onChangeScreenResolution()
-        new_autoAim(None, True)
-        MYLOG('indicator prepared')
-        if player.autoAim != old_autoAim:
-            old_autoAim = player.autoAim
-            player.autoAim = new_autoAim
-            old_onAutoAimVehicleLost = player.onAutoAimVehicleLost
-            player.onAutoAimVehicleLost = new_onAutoAimVehicleLost
+        player = BigWorld.player()
+        arena = player.arena
+        vehicles = arena.vehicles
+        if player.isVehicleAlive:
+            playerVehicleID = player.playerVehicleID
+            if not 'SPG' in vehicles[playerVehicleID]['vehicleType'].type.tags:
+                if indicator is None:
+                    indicator = TextLabel(config.get('autoaim_indicator_panel', {}))
+                    onChangeScreenResolution()
+                    new_autoAim(None, True)
+                    #MYLOG('indicator prepared')
+                if not myEventsAttached:
+                    old_autoAim = player.autoAim
+                    player.autoAim = new_autoAim
+                    old_onAutoAimVehicleLost = player.onAutoAimVehicleLost
+                    player.onAutoAimVehicleLost = new_onAutoAimVehicleLost
+                    arena.onVehicleKilled += myOnVehicleKilled
+                    myEventsAttached = True
+            else:
+                cleanUp()
+        else:
+            cleanUp()
     elif period is ARENA_PERIOD.AFTERBATTLE:
-        GUI.delRoot(indicator.window)
-        indicator = None
+        cleanUp()
 
+def cleanUp():
+    global old_autoAim
+    global old_onAutoAimVehicleLost
+    global indicator
+    global playerVehicleID
+    global myEventsAttached
+    playerVehicleID = None
+    if myEventsAttached:
+        player = BigWorld.player()
+        player.autoAim = old_autoAim
+        old_autoAim = None
+        player.onAutoAimVehicleLost = old_onAutoAimVehicleLost
+        old_onAutoAimVehicleLost = None
+        player.arena.onVehicleKilled -= myOnVehicleKilled
+        myEventsAttached = False
+    if not indicator is None:
+        GUI.delRoot(indicator.window)
+        indicator = None                
+    
 def new_autoAim(target, init = False):
+    prevAutoAimVehicle = None
     if not init:
+        prevAutoAimVehicle = BigWorld.player().autoAimVehicle
         old_autoAim(target)
     autoAimVehicle = BigWorld.player().autoAimVehicle
+    enabled = not autoAimVehicle is None
     #MYLOGLIVE("autoAimVehicle = %s" % (not autoAimVehicle is None))
-    indicator.setVisible(not autoAimVehicle is None)
+    if enabled and config.get("use_target_as_text", False):
+        indicator.setText(autoAimVehicle.typeDescriptor.type.userString)
+    indicator.setVisible(enabled)
+    if not init and prevAutoAimVehicle is None and not enabled and config.get("snap_to_nearest", False):
+        player = BigWorld.player()
+        source = player.inputHandler.getDesiredShotPoint()
+        new_target = None
+        distance_to_target = 10000
+        vehicles = player.arena.vehicles
+        for vehicleID, desc in vehicles.items():
+            if player.team is not vehicles[vehicleID]['team'] and desc['isAlive'] == True:
+                entity = BigWorld.entity(vehicleID)
+                if not entity is None:
+                    vehicle = BigWorld.entities[vehicleID]
+                    distance = source.flatDistTo(vehicle.position)
+                    if distance < distance_to_target:
+                        new_target = vehicle
+                        distance_to_target = distance
+        if not new_target is None:
+            new_autoAim(new_target)
 
 def new_onAutoAimVehicleLost():
     old_onAutoAimVehicleLost()
     indicator.setVisible(False)
+
+def myOnVehicleKilled(vehicleID, *args):
+    global playerVehicleID
+    global indicator
+    #MYLOGLIVE('myOnVehicleKilled (%s, own %s)' % (vehicleID, playerVehicleID))
+    if vehicleID == playerVehicleID:
+        playerVehicleID = None
+        #MYLOGLIVE("Oh no! We've got killed :(")
+        GUI.delRoot(indicator.window)
+        indicator = None
     
 # borrowed from https://github.com/macrosoft/wothp/blob/master/src/totalhp.py
 class TextLabel(object):
@@ -152,5 +218,5 @@ for vl in vals:
                     break
 
 if config:
-    g_playerEvents.onArenaPeriodChange += __pe_onArenaPeriodChange
+    g_playerEvents.onArenaPeriodChange += myPe_onArenaPeriodChange
     g_guiResetters.add(onChangeScreenResolution)

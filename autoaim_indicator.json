@@ -2,14 +2,16 @@
     "autoaim_indicator_panel": {
         "x": 0,
         "y": 0,
-        "width": 55,
-        "height": 24,
+        "width": 75,
+        "height": 25,
         "hcentered": true,
         "vcentered": true,
         "background": "autoaim_indicator.dds",
-        "font": "default_medium.font",
+        "font": "default_smaller.font",
         "visible": true,
 	"text": "AUTO",
 	"color": "#FFFF00"
-    }
+    },
+    "use_target_as_text": true,
+    "snap_to_nearest": true
 }
