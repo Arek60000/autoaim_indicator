@@ -1,17 +1,23 @@
 {
     "autoaim_indicator_panel": {
-        "x": 0,
-        "y": 0,
-        "width": 75,
-        "height": 25,
-        "hcentered": true,
-        "vcentered": true,
         "background": "autoaim_indicator.dds",
+        "color": "#FFFF00",
         "font": "default_smaller.font",
+        "hcentered": true,
+        "height": 17,
+        "text": "AUTO",
+        "vcentered": true,
         "visible": true,
-	"text": "AUTO",
-	"color": "#FFFF00"
+        "width": 75,
+        "x": 0,
+        "y": 0
     },
-    "use_target_as_text": true,
-    "snap_to_nearest": true
+    "max_characters": 15,
+    "snap_to_nearest": true,
+    "snapping_angle_degrees": 7.5,
+    "toggleKeyCode": 0,
+    "toggleStateOn": true,
+    "toggledOffMsg": "<font color='#FF0000'>Autoaim indicator/snapping turned OFF</font>",
+    "toggledOnMsg": "<font color='#00FF00'>Autoaim indicator/snapping turned ON</font>",
+    "use_target_as_text": true
 }
