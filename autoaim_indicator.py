@@ -2,12 +2,13 @@
 AutoAim indicator
 by Krzysztof_Chodak
 """
-import BigWorld, ResMgr, GUI, json, os, time, VehicleGunRotator, Math, math
+import BigWorld, ResMgr, GUI, json, os, time, VehicleGunRotator, Math, CommandMapping, math, inspect
 from debug_utils import *
 from gui.WindowsManager import g_windowsManager
 from PlayerEvents import g_playerEvents
 from constants import ARENA_PERIOD
 from gui import g_guiResetters, g_repeatKeyHandlers, GUI_SETTINGS
+from AvatarInputHandler.control_modes import ArcadeControlMode
 
 config = None
 old_autoAim = None
@@ -20,8 +21,9 @@ toggleStateOn = True
 enemies = {}
 player = None
 playerVehicle = None
+autoAimVehicle = None
 
-print '2014-11-13'
+print '2014-11-23'
 
 def MYLOGLIVE(message, permanent_log = True, make_red = True):
     from messenger import MessengerEntry
@@ -113,28 +115,48 @@ def cleanUp():
         indicator = None
     enemies.clear()
     playerVehicle = None
-    return
-
-
+    if not autoAimVehicle is None:
+        removeOutline(autoAimVehicle)
+        autoAimVehicle = None
+    
 def new_autoAim(target, init = False):
     global playerVehicle
     global counter
+    global autoAimVehicle
     prevAutoAimVehicleID = 0
     if init:
         playerVehicle = BigWorld.entity(playerVehicleID)
     else:
         prevAutoAimVehicleID = player._PlayerAvatar__autoAimVehID
         old_autoAim(target)
+    if prevAutoAimVehicleID != 0:
+        removeOutline(autoAimVehicle)
     autoAimVehicleID = player._PlayerAvatar__autoAimVehID
     enabled = autoAimVehicleID != 0
-    if enabled and config.get('use_target_as_text', False):
-        indicator.setText(BigWorld.entity(autoAimVehicleID).typeDescriptor.type.shortUserString[0:config.get('max_characters', 15) - 1])
+    if enabled:
+        autoAimVehicle = BigWorld.entity(autoAimVehicleID)
+        if config.get("use_target_as_text", True):
+            indicator.setText(autoAimVehicle.typeDescriptor.type.shortUserString[0:config.get("max_characters", 15)-1])
+    else:
+        autoAimVehicle = None
     indicator.setVisible(enabled)
     if not init and prevAutoAimVehicleID == 0 and not enabled and config.get("snap_to_nearest", False):
-        desiredShotPoint = player.inputHandler.getDesiredShotPoint()
-        if desiredShotPoint is None:
-            MYLOG('No desiredShotPoint available - trying alternative')
-            desiredShotPoint = player.gunRotator.markerInfo[0]
+        try:
+            callers_frame = inspect.getouterframes(inspect.currentframe())[1]
+            if callers_frame[3] == "handleKeyEvent":
+                callers_locals = inspect.getargvalues(callers_frame[0]).locals
+                if callers_locals["cmdMap"].isFired(CommandMapping.CMD_CM_LOCK_TARGET_OFF, callers_locals["key"]) and callers_locals["isDown"]:
+                    #MYLOG("disable autoaim used")
+                    return
+        except:        
+            pass
+        if isinstance(player.inputHandler.ctrl, ArcadeControlMode):
+            desiredShotPoint = player.inputHandler.ctrl.camera.aimingSystem.getThirdPersonShotPoint()
+        else:
+            desiredShotPoint = player.inputHandler.getDesiredShotPoint()
+            if desiredShotPoint is None:
+                MYLOG("No desiredShotPoint available - trying alternative")
+                desiredShotPoint = player.gunRotator.markerInfo[0]
         if desiredShotPoint is None:
             MYLOG('No desiredShotPoint available')
         else:
@@ -157,21 +179,41 @@ def new_autoAim(target, init = False):
 
             if new_target is not None:
                 new_autoAim(new_target)
+    if enabled:
+        addOutline(autoAimVehicle)
+        counter = 0
 
 def normalize(v):
     return v / math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z)
 
-
 def new_onAutoAimVehicleLost():
+    global autoAimVehicle
+    removeOutline(autoAimVehicle)
+    autoAimVehicle = None
     old_onAutoAimVehicleLost()
     indicator.setVisible(False)
 
+def addOutline(vehicle):
+    #if config.get("outline_target", True):
+        #BigWorld.wgAddEdgeDetectEntity(autoAimVehicle, 1)
+    pass
 
+def removeOutline(vehicle):
+    if not config.get("outline_target", True):
+        return
+    #target = BigWorld.target()
+    #if not(target is not None and isinstance(target, Vehicle.Vehicle) and target.id == vehicle.id):
+    #BigWorld.wgDelEdgeDetectEntity(vehicle)
+    
 def myOnVehicleKilled(vehicleID, *args):
+    global autoAimVehicle
     if vehicleID == playerVehicleID:
         cleanUp()
-
-
+    else:
+        if autoAimVehicle and vehicleID == autoAimVehicle.id:
+            autoAimVehicle = None
+    
+# borrowed from https://github.com/macrosoft/wothp/blob/master/src/totalhp.py
 class TextLabel(object):
     label = None
     shadow = None
@@ -299,3 +341,8 @@ if config:
     if toggleStateOn:
         g_playerEvents.onArenaPeriodChange += myPe_onArenaPeriodChange
         g_guiResetters.add(onChangeScreenResolution)
+
+def myOnAvatarBecomeNonPlayer(*args):
+    cleanUp()
+    
+g_playerEvents.onAvatarBecomeNonPlayer += myOnAvatarBecomeNonPlayer
