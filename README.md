@@ -6,7 +6,7 @@ The Configuration is done via provided json file.
 
 ![Screenshot](http://cdn-frm-eu.wargaming.net/wot/eu/uploads/monthly_10_2014/post-506947255-0-02175200-1414274138.jpg)
 
-Support for this mod is available at the official [World of Tanks Forum](http://forum.worldoftanks.eu/index.php?/topic/441413-094-autoaim-indication/)
+Support for this mod is available at the official [World of Tanks Forum](http://forum.worldoftanks.eu/index.php?/topic/441413-)
 
 Download & Install
 ------
