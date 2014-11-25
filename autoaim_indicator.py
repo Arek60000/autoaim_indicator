@@ -23,7 +23,7 @@ player = None
 playerVehicle = None
 autoAimVehicle = None
 
-print '2014-11-23'
+print '2014-11-25'
 
 def MYLOGLIVE(message, permanent_log = True, make_red = True):
     from messenger import MessengerEntry
@@ -102,6 +102,7 @@ def cleanUp():
     global playerVehicleID
     global myEventsAttached
     global playerVehicle
+    global autoAimVehicle
     playerVehicleID = None
     if myEventsAttached:
         player.autoAim = old_autoAim
