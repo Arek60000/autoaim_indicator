@@ -20,7 +20,17 @@
 
 __version__ = "2014-11-25"
 
-import BigWorld, ResMgr, GUI, json, os, time, VehicleGunRotator, Math, CommandMapping, math, inspect
+import BigWorld
+import ResMgr
+import GUI
+import json
+import os
+import time
+import VehicleGunRotator
+import Math
+import CommandMapping
+import math
+import inspect
 from debug_utils import *
 from gui.WindowsManager import g_windowsManager
 from PlayerEvents import g_playerEvents
@@ -43,9 +53,10 @@ autoAimVehicle = None
 
 print __version__
 
-def MYLOGLIVE(message, permanent_log = True, make_red = True):
+
+def MYLOGLIVE(message, permanent_log=True, make_red=True):
     from messenger import MessengerEntry
-    if message=="":
+    if message == "":
         return
     if permanent_log:
         LOG_NOTE(message)
@@ -53,14 +64,18 @@ def MYLOGLIVE(message, permanent_log = True, make_red = True):
         message = '<font color="#FF0000">' + message + '</font>'
     MessengerEntry.g_instance.gui.addClientMessage(message)
 
+
 def MYLOG(message, *args):
     LOG_NOTE(message, *args)
+
 
 def PT2STR(obj):
     return "x=%f, y=%f, z=%f" % (obj.x, obj.y, obj.z)
 
-def MYPPRINT(obj, name = None):
-    import inspect, pprint
+
+def MYPPRINT(obj, name=None):
+    import inspect
+    import pprint
     if isinstance(obj, dict) or isinstance(obj, list):
         pprint.pprint(obj)
     elif isinstance(obj, Math.Vector3):
@@ -73,7 +88,8 @@ def MYPPRINT(obj, name = None):
     else:
         pprint.pprint(inspect.getmembers(obj))
 
-def myPe_onArenaPeriodChange(period = ARENA_PERIOD.BATTLE, *args):
+
+def myPe_onArenaPeriodChange(period=ARENA_PERIOD.BATTLE, *args):
     global config
     global old_autoAim
     global old_onAutoAimVehicleLost
@@ -113,6 +129,7 @@ def myPe_onArenaPeriodChange(period = ARENA_PERIOD.BATTLE, *args):
     elif period is ARENA_PERIOD.AFTERBATTLE:
         cleanUp()
 
+
 def cleanUp():
     global old_autoAim
     global old_onAutoAimVehicleLost
@@ -137,8 +154,9 @@ def cleanUp():
     if not autoAimVehicle is None:
         removeOutline(autoAimVehicle)
         autoAimVehicle = None
-    
-def new_autoAim(target, init = False):
+
+
+def new_autoAim(target, init=False):
     global playerVehicle
     global counter
     global autoAimVehicle
@@ -167,7 +185,7 @@ def new_autoAim(target, init = False):
                 if callers_locals["cmdMap"].isFired(CommandMapping.CMD_CM_LOCK_TARGET_OFF, callers_locals["key"]) and callers_locals["isDown"]:
                     #MYLOG("disable autoaim used")
                     return
-        except:        
+        except:
             pass
         if isinstance(player.inputHandler.ctrl, ArcadeControlMode):
             desiredShotPoint = player.inputHandler.ctrl.camera.aimingSystem.getThirdPersonShotPoint()
@@ -202,8 +220,10 @@ def new_autoAim(target, init = False):
         addOutline(autoAimVehicle)
         counter = 0
 
+
 def normalize(v):
     return v / math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z)
+
 
 def new_onAutoAimVehicleLost():
     global autoAimVehicle
@@ -212,10 +232,12 @@ def new_onAutoAimVehicleLost():
     old_onAutoAimVehicleLost()
     indicator.setVisible(False)
 
+
 def addOutline(vehicle):
     #if config.get("outline_target", True):
         #BigWorld.wgAddEdgeDetectEntity(autoAimVehicle, 1)
     pass
+
 
 def removeOutline(vehicle):
     if not config.get("outline_target", True):
@@ -223,7 +245,8 @@ def removeOutline(vehicle):
     #target = BigWorld.target()
     #if not(target is not None and isinstance(target, Vehicle.Vehicle) and target.id == vehicle.id):
     #BigWorld.wgDelEdgeDetectEntity(vehicle)
-    
+
+
 def myOnVehicleKilled(vehicleID, *args):
     global autoAimVehicle
     if vehicleID == playerVehicleID:
@@ -231,7 +254,8 @@ def myOnVehicleKilled(vehicleID, *args):
     else:
         if autoAimVehicle and vehicleID == autoAimVehicle.id:
             autoAimVehicle = None
-    
+
+
 # borrowed from https://github.com/macrosoft/wothp/blob/master/src/totalhp.py
 class TextLabel(object):
     label = None
@@ -290,7 +314,7 @@ class TextLabel(object):
         self.shadow.visible = flag
         self.label.visible = flag
 
-    def setText(self, text, color = None):
+    def setText(self, text, color=None):
         shadowText = text.replace('\\c60FF00FF;', '')
         self.shadow.text = '\\c000000FF;' + shadowText
         color = '\\c' + color + 'FF;' if color else self.color
@@ -361,7 +385,8 @@ if config:
         g_playerEvents.onArenaPeriodChange += myPe_onArenaPeriodChange
         g_guiResetters.add(onChangeScreenResolution)
 
+
 def myOnAvatarBecomeNonPlayer(*args):
     cleanUp()
-    
+
 g_playerEvents.onAvatarBecomeNonPlayer += myOnAvatarBecomeNonPlayer
