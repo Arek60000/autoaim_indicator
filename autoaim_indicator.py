@@ -18,6 +18,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+__version__ = "2014-11-25"
+
 import BigWorld, ResMgr, GUI, json, os, time, VehicleGunRotator, Math, CommandMapping, math, inspect
 from debug_utils import *
 from gui.WindowsManager import g_windowsManager
@@ -39,7 +41,7 @@ player = None
 playerVehicle = None
 autoAimVehicle = None
 
-print '2014-11-25'
+print __version__
 
 def MYLOGLIVE(message, permanent_log = True, make_red = True):
     from messenger import MessengerEntry
