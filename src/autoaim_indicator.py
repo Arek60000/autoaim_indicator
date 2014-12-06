@@ -18,7 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-__version__ = "2014-11-25"
+__version__ = "2014-12-02"
 
 import BigWorld
 import ResMgr
@@ -34,7 +34,7 @@ import inspect
 from debug_utils import *
 from gui.WindowsManager import g_windowsManager
 from PlayerEvents import g_playerEvents
-from constants import ARENA_PERIOD
+from constants import ARENA_PERIOD, ARENA_BONUS_TYPE
 from gui import g_guiResetters, g_repeatKeyHandlers, GUI_SETTINGS
 from AvatarInputHandler.control_modes import ArcadeControlMode
 
@@ -42,7 +42,6 @@ config = None
 old_autoAim = None
 old_onAutoAimVehicleLost = None
 indicator = None
-playerVehicleID = None
 myEventsAttached = False
 toggleKey = 0
 toggleStateOn = True
@@ -50,13 +49,14 @@ enemies = {}
 player = None
 playerVehicle = None
 autoAimVehicle = None
+cw_mode = None
 
 print __version__
 
 
 def MYLOGLIVE(message, permanent_log=True, make_red=True):
     from messenger import MessengerEntry
-    if message == "":
+    if message == '':
         return
     if permanent_log:
         LOG_NOTE(message)
@@ -70,7 +70,7 @@ def MYLOG(message, *args):
 
 
 def PT2STR(obj):
-    return "x=%f, y=%f, z=%f" % (obj.x, obj.y, obj.z)
+    return 'x=%f, y=%f, z=%f' % (obj.x, obj.y, obj.z)
 
 
 def MYPPRINT(obj, name=None):
@@ -82,21 +82,21 @@ def MYPPRINT(obj, name=None):
         if name is None:
             print PT2STR(obj)
         else:
-            print "%s: %s" % (name, PT2STR(obj))
+            print '%s: %s' % (name, PT2STR(obj))
     elif hasattr(obj, '__call__'):
         pprint.pprint(inspect.getargspec(obj))
     else:
         pprint.pprint(inspect.getmembers(obj))
+    return
 
 
 def myPe_onArenaPeriodChange(period=ARENA_PERIOD.BATTLE, *args):
-    global config
-    global old_autoAim
-    global old_onAutoAimVehicleLost
     global indicator
-    global playerVehicleID
-    global myEventsAttached
+    global old_onAutoAimVehicleLost
     global player
+    global playerVehicle
+    global myEventsAttached
+    global old_autoAim
     if period is ARENA_PERIOD.BATTLE:
         if g_windowsManager.battleWindow is None:
             BigWorld.callback(1, myPe_onArenaPeriodChange)
@@ -106,6 +106,7 @@ def myPe_onArenaPeriodChange(period=ARENA_PERIOD.BATTLE, *args):
         vehicles = arena.vehicles
         if player.isVehicleAlive:
             playerVehicleID = player.playerVehicleID
+            playerVehicle = BigWorld.entity(playerVehicleID)
             if 'SPG' not in vehicles[playerVehicleID]['vehicleType'].type.tags:
                 for vehicleID, desc in vehicles.items():
                     if player.team is not desc['team'] and desc['isAlive'] == True:
@@ -121,6 +122,7 @@ def myPe_onArenaPeriodChange(period=ARENA_PERIOD.BATTLE, *args):
                     old_onAutoAimVehicleLost = player.onAutoAimVehicleLost
                     player.onAutoAimVehicleLost = new_onAutoAimVehicleLost
                     arena.onVehicleKilled += myOnVehicleKilled
+                    player.onVehicleEnterWorld += myOnVehicleEnterWorld
                     myEventsAttached = True
             else:
                 cleanUp()
@@ -128,42 +130,41 @@ def myPe_onArenaPeriodChange(period=ARENA_PERIOD.BATTLE, *args):
             cleanUp()
     elif period is ARENA_PERIOD.AFTERBATTLE:
         cleanUp()
+    return
 
 
 def cleanUp():
-    global old_autoAim
-    global old_onAutoAimVehicleLost
     global indicator
-    global playerVehicleID
-    global myEventsAttached
+    global old_onAutoAimVehicleLost
     global playerVehicle
+    global myEventsAttached
     global autoAimVehicle
-    playerVehicleID = None
+    global old_autoAim
+    playerVehicle = None
     if myEventsAttached:
         player.autoAim = old_autoAim
         old_autoAim = None
         player.onAutoAimVehicleLost = old_onAutoAimVehicleLost
         old_onAutoAimVehicleLost = None
-        player.arena.onVehicleKilled -= myOnVehicleKilled
+        if player.arena:
+            player.arena.onVehicleKilled -= myOnVehicleKilled
+        player.onVehicleEnterWorld -= myOnVehicleEnterWorld
         myEventsAttached = False
-    if not indicator is None:
+    if indicator is not None:
         GUI.delRoot(indicator.window)
         indicator = None
     enemies.clear()
     playerVehicle = None
-    if not autoAimVehicle is None:
-        removeOutline(autoAimVehicle)
+    if autoAimVehicle is not None:
+        removeOutline(autoAimVehicle, True)
         autoAimVehicle = None
+    return
 
 
 def new_autoAim(target, init=False):
-    global playerVehicle
-    global counter
     global autoAimVehicle
     prevAutoAimVehicleID = 0
-    if init:
-        playerVehicle = BigWorld.entity(playerVehicleID)
-    else:
+    if not init:
         prevAutoAimVehicleID = player._PlayerAvatar__autoAimVehID
         old_autoAim(target)
     if prevAutoAimVehicleID != 0:
@@ -172,33 +173,33 @@ def new_autoAim(target, init=False):
     enabled = autoAimVehicleID != 0
     if enabled:
         autoAimVehicle = BigWorld.entity(autoAimVehicleID)
-        if config.get("use_target_as_text", True):
-            indicator.setText(autoAimVehicle.typeDescriptor.type.shortUserString[0:config.get("max_characters", 15)-1])
+        if config.get('use_target_as_text', True):
+            indicator.setText(autoAimVehicle.typeDescriptor.type.shortUserString[0:config.get('max_characters', 15) - 1])
     else:
         autoAimVehicle = None
     indicator.setVisible(enabled)
-    if not init and prevAutoAimVehicleID == 0 and not enabled and config.get("snap_to_nearest", False):
+    if not init and prevAutoAimVehicleID == 0 and not enabled and config.get('snap_to_nearest', False):
         try:
             callers_frame = inspect.getouterframes(inspect.currentframe())[1]
-            if callers_frame[3] == "handleKeyEvent":
+            if callers_frame[3] == 'handleKeyEvent':
                 callers_locals = inspect.getargvalues(callers_frame[0]).locals
-                if callers_locals["cmdMap"].isFired(CommandMapping.CMD_CM_LOCK_TARGET_OFF, callers_locals["key"]) and callers_locals["isDown"]:
-                    #MYLOG("disable autoaim used")
+                if callers_locals['cmdMap'].isFired(CommandMapping.CMD_CM_LOCK_TARGET_OFF, callers_locals['key']) and callers_locals['isDown']:
                     return
         except:
             pass
+
         if isinstance(player.inputHandler.ctrl, ArcadeControlMode):
             desiredShotPoint = player.inputHandler.ctrl.camera.aimingSystem.getThirdPersonShotPoint()
         else:
             desiredShotPoint = player.inputHandler.getDesiredShotPoint()
             if desiredShotPoint is None:
-                MYLOG("No desiredShotPoint available - trying alternative")
+                MYLOG('No desiredShotPoint available - trying alternative')
                 desiredShotPoint = player.gunRotator.markerInfo[0]
         if desiredShotPoint is None:
             MYLOG('No desiredShotPoint available')
         else:
             new_target = None
-            distance_to_target = math.radians(config.get("snapping_angle_degrees", 7.5))
+            distance_to_target = math.radians(config.get('snapping_angle_degrees', 7.5))
             vehicles = player.arena.vehicles
             v1norm = normalize(desiredShotPoint - playerVehicle.position)
             for vehicleID in enemies:
@@ -215,10 +216,11 @@ def new_autoAim(target, init=False):
                         distance_to_target = distance
 
             if new_target is not None:
+                MYLOG('new target acquired at %f degrees' % math.degrees(distance_to_target))
                 new_autoAim(new_target)
     if enabled:
         addOutline(autoAimVehicle)
-        counter = 0
+    return
 
 
 def normalize(v):
@@ -231,32 +233,32 @@ def new_onAutoAimVehicleLost():
     autoAimVehicle = None
     old_onAutoAimVehicleLost()
     indicator.setVisible(False)
+    return
 
 
 def addOutline(vehicle):
-    #if config.get("outline_target", True):
-        #BigWorld.wgAddEdgeDetectEntity(autoAimVehicle, 1)
     pass
 
 
-def removeOutline(vehicle):
-    if not config.get("outline_target", True):
-        return
-    #target = BigWorld.target()
-    #if not(target is not None and isinstance(target, Vehicle.Vehicle) and target.id == vehicle.id):
-    #BigWorld.wgDelEdgeDetectEntity(vehicle)
+def removeOutline(vehicle, cleanUp=False):
+    pass
 
 
 def myOnVehicleKilled(vehicleID, *args):
     global autoAimVehicle
-    if vehicleID == playerVehicleID:
+    if vehicleID == playerVehicle.id:
         cleanUp()
-    else:
-        if autoAimVehicle and vehicleID == autoAimVehicle.id:
-            autoAimVehicle = None
+    elif autoAimVehicle and vehicleID == autoAimVehicle.id:
+        autoAimVehicle = None
+    return
 
 
-# borrowed from https://github.com/macrosoft/wothp/blob/master/src/totalhp.py
+def myOnVehicleEnterWorld(vehicle):
+    global cw_mode
+    if cw_mode and vehicle.isAlive() and player.team is not player.arena.vehicles[vehicle.id]['team']:
+        enemies[vehicle.id] = True
+
+
 class TextLabel(object):
     label = None
     shadow = None
@@ -385,8 +387,8 @@ if config:
         g_playerEvents.onArenaPeriodChange += myPe_onArenaPeriodChange
         g_guiResetters.add(onChangeScreenResolution)
 
-
 def myOnAvatarBecomeNonPlayer(*args):
     cleanUp()
+
 
 g_playerEvents.onAvatarBecomeNonPlayer += myOnAvatarBecomeNonPlayer
